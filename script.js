@@ -746,7 +746,7 @@ async function renderFallbackWith3DMesh(exportCanvasEl, browserWindowEl) {
     return outCanvas.toDataURL('image/png');
 }
 
-// Strip-based homography texture mapper for pseudo-3D perspective projection
+// Triangle-mesh perspective texture mapper: eliminates waviness and jagged edges in 3D rotation
 function drawPerspectiveImage(ctx, imgCanvas, cx, cy, w, h, tiltMode, scale) {
     const rad = Math.PI / 180;
     let rx = 0, ry = 0, rz = 0, s = 0.94;
@@ -774,41 +774,114 @@ function drawPerspectiveImage(ctx, imgCanvas, cx, cy, w, h, tiltMode, scale) {
         };
     }
 
-    const strips = 80;
-    ctx.save();
-    for (let i = 0; i < strips; i++) {
-        const t0 = i / strips;
-        const t1 = (i + 1) / strips;
-        const y0 = -h / 2 + t0 * h;
-        const y1 = -h / 2 + t1 * h;
+    // Cast realistic drop shadow using the projected 3D polygon boundary
+    if (state.shadow !== 'none') {
+        const p0 = project(-w / 2, -h / 2);
+        const p1 = project(w / 2, -h / 2);
+        const p2 = project(w / 2, h / 2);
+        const p3 = project(-w / 2, h / 2);
 
-        const pTL = project(-w / 2, y0);
-        const pTR = project(w / 2, y0);
-        const pBL = project(-w / 2, y1);
-        const pBR = project(w / 2, y1);
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = (state.shadow === 'md' ? 18 : state.shadow === 'xl' ? 32 : 50) * scale;
+        ctx.shadowOffsetY = (state.shadow === 'md' ? 10 : state.shadow === 'xl' ? 18 : 28) * scale;
+        ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
 
-        const sy = t0 * imgCanvas.height;
-        const sh = (1 / strips) * imgCanvas.height;
+    const gridCols = 36;
+    const gridRows = 36;
+    const imgW = imgCanvas.width;
+    const imgH = imgCanvas.height;
+
+    // Affine triangle renderer: exact 3-point mapping ensures 0px gap and perfectly straight lines
+    function renderTriangle(x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2) {
+        const delta = u0 * (v1 - v2) + u1 * (v2 - v0) + u2 * (v0 - v1);
+        if (Math.abs(delta) < 1e-6) return;
+
+        // 0.35px centroid dilation eliminates sub-pixel transparent hairline gaps at clip boundaries
+        const centroidX = (x0 + x1 + x2) / 3;
+        const centroidY = (y0 + y1 + y2) / 3;
+        const pad = 0.35;
+
+        const d0x = x0 - centroidX, d0y = y0 - centroidY;
+        const len0 = Math.hypot(d0x, d0y) || 1;
+        const cx0 = x0 + (d0x / len0) * pad;
+        const cy0 = y0 + (d0y / len0) * pad;
+
+        const d1x = x1 - centroidX, d1y = y1 - centroidY;
+        const len1 = Math.hypot(d1x, d1y) || 1;
+        const cx1 = x1 + (d1x / len1) * pad;
+        const cy1 = y1 + (d1y / len1) * pad;
+
+        const d2x = x2 - centroidX, d2y = y2 - centroidY;
+        const len2 = Math.hypot(d2x, d2y) || 1;
+        const cx2 = x2 + (d2x / len2) * pad;
+        const cy2 = y2 + (d2y / len2) * pad;
 
         ctx.save();
         ctx.beginPath();
-        ctx.moveTo(pTL.x, pTL.y);
-        ctx.lineTo(pTR.x, pTR.y);
-        ctx.lineTo(pBR.x, pBR.y);
-        ctx.lineTo(pBL.x, pBL.y);
+        ctx.moveTo(cx0, cy0);
+        ctx.lineTo(cx1, cy1);
+        ctx.lineTo(cx2, cy2);
         ctx.closePath();
         ctx.clip();
 
-        const dx = (pTR.x - pTL.x) / imgCanvas.width;
-        const dy = (pTR.y - pTL.y) / imgCanvas.width;
-        const ex = (pBL.x - pTL.x) / sh;
-        const ey = (pBL.y - pTL.y) / sh;
+        const a = (x0 * (v1 - v2) + x1 * (v2 - v0) + x2 * (v0 - v1)) / delta;
+        const b = (y0 * (v1 - v2) + y1 * (v2 - v0) + y2 * (v0 - v1)) / delta;
+        const c = (x0 * (u2 - u1) + x1 * (u0 - u2) + x2 * (u1 - u0)) / delta;
+        const d = (y0 * (u2 - u1) + y1 * (u0 - u2) + y2 * (u1 - u0)) / delta;
+        const e = (x0 * (u1 * v2 - u2 * v1) + x1 * (u2 * v0 - u0 * v2) + x2 * (u0 * v1 - u1 * v0)) / delta;
+        const f = (y0 * (u1 * v2 - u2 * v1) + y1 * (u2 * v0 - u0 * v2) + y2 * (u0 * v1 - u1 * v0)) / delta;
 
-        ctx.transform(dx, dy, ex, ey, pTL.x - ex * sy, pTL.y - ey * sy);
+        ctx.transform(a, b, c, d, e, f);
         ctx.drawImage(imgCanvas, 0, 0);
         ctx.restore();
     }
-    ctx.restore();
+
+    // Precompute projected vertices across the 2D subdivision grid
+    const pts = [];
+    for (let r = 0; r <= gridRows; r++) {
+        const row = [];
+        const vRatio = r / gridRows;
+        const yModel = -h / 2 + vRatio * h;
+        const vTex = vRatio * imgH;
+
+        for (let c = 0; c <= gridCols; c++) {
+            const uRatio = c / gridCols;
+            const xModel = -w / 2 + uRatio * w;
+            const uTex = uRatio * imgW;
+            const proj = project(xModel, yModel);
+
+            row.push({
+                x: proj.x,
+                y: proj.y,
+                u: uTex,
+                v: vTex
+            });
+        }
+        pts.push(row);
+    }
+
+    // Draw 2 continuous triangles per grid cell
+    for (let r = 0; r < gridRows; r++) {
+        for (let c = 0; c < gridCols; c++) {
+            const tl = pts[r][c];
+            const tr = pts[r][c + 1];
+            const bl = pts[r + 1][c];
+            const br = pts[r + 1][c + 1];
+
+            renderTriangle(tl.x, tl.y, tr.x, tr.y, bl.x, bl.y, tl.u, tl.v, tr.u, tr.v, bl.u, bl.v);
+            renderTriangle(tr.x, tr.y, br.x, br.y, bl.x, bl.y, tr.u, tr.v, br.u, br.v, bl.u, bl.v);
+        }
+    }
 }
 
 // --- MODAL & TOAST NOTIFICATIONS ---
