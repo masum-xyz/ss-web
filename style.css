@@ -1,0 +1,116 @@
+/* Custom Scrollbar - Tech Monochrome */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+::-webkit-scrollbar-track {
+    background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
+
+/* Technical Dot Matrix Canvas Background */
+.bg-tech-grid {
+    background-color: #09090b;
+    background-image: radial-gradient(#27272a 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Checkerboard for transparent option */
+.bg-checkerboard {
+    background-color: #18181b;
+    background-image: 
+        linear-gradient(45deg, #27272a 25%, transparent 25%), 
+        linear-gradient(-45deg, #27272a 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #27272a 75%), 
+        linear-gradient(-45deg, transparent 75%, #27272a 75%);
+    background-size: 12px 12px;
+    background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+}
+
+/* Neo-Brutalism custom shadow */
+.neo-brutal-shadow {
+    box-shadow: 8px 8px 0px 0px #000000;
+    border: 2.5px solid #000000;
+}
+
+/* Cyberpunk Neon Glow */
+.neon-glow-frame {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.25), 0 0 60px rgba(244, 63, 94, 0.15);
+    border: 1px solid rgba(34, 211, 238, 0.5);
+}
+
+/* 3D Perspective Styles */
+.perspective-container {
+    perspective: 1600px;
+    transform-style: preserve-3d;
+}
+.tilt-none {
+    transform: none;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tilt-left {
+    transform: perspective(1600px) rotateY(12deg) rotateX(4deg) scale(0.94);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tilt-right {
+    transform: perspective(1600px) rotateY(-12deg) rotateX(4deg) scale(0.94);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tilt-top {
+    transform: perspective(1600px) rotateX(14deg) scale(0.94);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tilt-isometric {
+    transform: perspective(1600px) rotateX(18deg) rotateZ(-6deg) rotateY(10deg) scale(0.90);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Range Slider Tech Styling */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #27272a;
+    height: 4px;
+    border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: #fafafa;
+    border: 1px solid #09090b;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Color Input Reset */
+input[type="color"] {
+    -webkit-appearance: none;
+    border: none;
+    padding: 0;
+    background: none;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+/* Hide scrollbar for clean horizontal tabs */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
