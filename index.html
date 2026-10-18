@@ -116,31 +116,43 @@
             <div class="w-full max-w-4xl flex items-center justify-center my-auto py-4 transition-all duration-300">
                 <div id="exportCanvas" class="w-full transition-all duration-200 relative flex items-center justify-center perspective-container rounded-lg overflow-hidden shadow-inner" style="padding: 32px; background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 50%, #1e1b4b 100%);">
                     
-                    <!-- Browser Frame Container -->
-                    <div id="browserWindow" class="w-full relative z-10 overflow-hidden transition-all duration-300 tilt-none shadow-2xl" style="border-radius: 12px;">
-                        
-                        <!-- Dynamic Browser Top Bar -->
-                        <div id="browserHeader"></div>
+                    <!-- Unified Device Frame Wrapper (Rotates in 3D perspective including stands & chassis) -->
+                    <div id="deviceWrapper" class="relative z-10 transition-all duration-300 flex flex-col items-center justify-center w-full max-w-full tilt-none">
+                        <!-- Dynamic Hardware Side Buttons (Action button, Volume, Power) -->
+                        <div id="hardwareButtons" class="absolute inset-0 pointer-events-none z-0"></div>
 
-                        <!-- Website Screenshot Image Area (Dynamic Height Controlled) -->
-                        <div id="viewportContainer" class="relative bg-zinc-950 w-full flex items-center justify-center overflow-hidden transition-all duration-150" style="height: 420px;">
+                        <!-- Browser / Screen Window Container -->
+                        <div id="browserWindow" class="w-full relative overflow-hidden transition-all duration-300 shadow-2xl" style="border-radius: 12px;">
                             
-                            <!-- Loading Overlay -->
-                            <div id="captureLoader" class="absolute inset-0 bg-zinc-950/90 backdrop-blur-sm z-20 hidden flex-col items-center justify-center p-6 text-center">
-                                <div class="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-100 animate-spin mb-3"></div>
-                                <p class="text-zinc-200 font-mono text-xs mb-1">fetching viewport...</p>
-                                <p class="text-zinc-500 font-mono text-[11px] max-w-xs" id="loaderSubtext">rendering headless chromium</p>
+                            <!-- Dynamic Browser Top Bar / Phone Status Bar / Laptop Notch -->
+                            <div id="browserHeader"></div>
+
+                            <!-- Website Screenshot Image Area (Dynamic Height Controlled) -->
+                            <div id="viewportContainer" class="relative bg-zinc-950 w-full flex items-center justify-center overflow-hidden transition-all duration-150" style="height: 420px;">
+                                
+                                <!-- Loading Overlay -->
+                                <div id="captureLoader" class="absolute inset-0 bg-zinc-950/90 backdrop-blur-sm z-20 hidden flex-col items-center justify-center p-6 text-center">
+                                    <div class="w-6 h-6 rounded-full border-2 border-zinc-700 border-t-zinc-100 animate-spin mb-3"></div>
+                                    <p class="text-zinc-200 font-mono text-xs mb-1">fetching viewport...</p>
+                                    <p class="text-zinc-500 font-mono text-[11px] max-w-xs" id="loaderSubtext">rendering headless chromium</p>
+                                </div>
+
+                                <!-- Main Screenshot Image -->
+                                <img 
+                                    id="screenshotImg" 
+                                    src="" 
+                                    alt="Website Screenshot Preview" 
+                                    crossOrigin="anonymous"
+                                    class="w-full h-full object-cover object-top"
+                                >
                             </div>
 
-                            <!-- Main Screenshot Image -->
-                            <img 
-                                id="screenshotImg" 
-                                src="" 
-                                alt="Website Screenshot Preview" 
-                                crossOrigin="anonymous"
-                                class="w-full h-full object-cover object-top"
-                            >
+                            <!-- Dynamic Bottom Bar (Home Indicator / iMac Chin / Gesture Bar) -->
+                            <div id="browserFooter"></div>
                         </div>
+
+                        <!-- Dynamic Stand / Base Lip (For Monitors & Laptops) -->
+                        <div id="deviceStand" class="w-full flex flex-col items-center pointer-events-none"></div>
                     </div>
 
                     <!-- Minimal Technical Watermark -->
@@ -153,6 +165,8 @@
             <!-- Subtle Bottom Helper Bar -->
             <div class="hidden sm:flex mt-2 items-center justify-center gap-3 text-[10px] font-mono text-zinc-500 shrink-0">
                 <span>tip: paste image (ctrl+v)</span>
+                <span class="text-zinc-700">•</span>
+                <button onclick="resetDefaultMockup()" class="hover:text-zinc-300 underline underline-offset-2 transition" title="Restore default vector mockup">reset mockup</button>
                 <span class="text-zinc-700">•</span>
                 <span id="activeConfigSummary" class="text-zinc-400">macOS Dark • H:420px • pad 32px</span>
             </div>
@@ -201,10 +215,23 @@
                 <!-- TAB 1: WINDOW FRAME STYLE -->
                 <div id="studioPanel-frame" class="space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400">Select OS / Browser Style</span>
-                        <span class="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800" id="activeThemeBadge">macOS Dark</span>
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-zinc-400">Device Frame & Mockup</span>
+                        <span class="text-[10px] font-mono text-zinc-300 bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800" id="activeThemeBadge">macOS Dark</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-1.5" id="themeSelectorGrid">
+
+                    <!-- Category Filter Pills -->
+                    <div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 text-[10px] font-mono" id="deviceCategoryFilter">
+                        <button onclick="filterDeviceCategory('all')" class="cat-filter-btn px-2 py-1 rounded bg-zinc-800 text-zinc-100 border border-zinc-700 whitespace-nowrap transition" data-cat="all">All</button>
+                        <button onclick="filterDeviceCategory('phone')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="phone">📱 Phone</button>
+                        <button onclick="filterDeviceCategory('laptop')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="laptop">💻 Laptop</button>
+                        <button onclick="filterDeviceCategory('monitor')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="monitor">🖥️ Monitor</button>
+                        <button onclick="filterDeviceCategory('tablet')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="tablet">📱 Tablet</button>
+                        <button onclick="filterDeviceCategory('browser')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="browser">🌐 Browser</button>
+                        <button onclick="filterDeviceCategory('screen')" class="cat-filter-btn px-2 py-1 rounded text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 whitespace-nowrap transition" data-cat="screen">✨ Screen</button>
+                    </div>
+
+                    <!-- Device Selection Grid -->
+                    <div class="grid grid-cols-2 gap-1.5 max-h-[460px] overflow-y-auto pr-0.5" id="themeSelectorGrid">
                         <!-- Populated via JS -->
                     </div>
                 </div>
@@ -272,16 +299,16 @@
                             </span>
                             <span class="text-emerald-400 font-mono font-semibold" id="heightVal">420px</span>
                         </div>
-                        <input type="range" id="heightSlider" min="240" max="760" step="10" value="420" oninput="updateFrameSettings()" class="w-full">
+                        <input type="range" id="heightSlider" min="240" max="860" step="10" value="420" oninput="updateFrameSettings()" class="w-full">
                         
                         <!-- Quick Presets for OG Image / Hero Height -->
                         <div class="pt-1">
-                            <span class="text-[10px] font-mono text-zinc-500 block mb-1.5">QUICK RATIO / HERO PRESETS</span>
+                            <span class="text-[10px] font-mono text-zinc-500 block mb-1.5">DEVICE & SOCIAL MEDIA RATIO PRESETS</span>
                             <div class="grid grid-cols-4 gap-1">
-                                <button onclick="setHeightPreset(340, 'OG Card')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition">OG 1.9:1</button>
-                                <button onclick="setHeightPreset(420, '16:10 Std')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition">Std 16:10</button>
-                                <button onclick="setHeightPreset(520, 'Hero Med')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition">Hero 4:3</button>
-                                <button onclick="setHeightPreset(660, 'Full Tall')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition">Tall Hero</button>
+                                <button onclick="setHeightPreset(340, 'OG Card (1.9:1)')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition text-center" title="OpenGraph Social Card">OG Card</button>
+                                <button onclick="setHeightPreset(420, 'Desktop 16:10')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition text-center" title="Desktop / Laptop Standard">Desktop</button>
+                                <button onclick="setHeightPreset(500, 'Tablet 4:3')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition text-center" title="Tablet Portrait / Square Feed">Tablet</button>
+                                <button onclick="setHeightPreset(738, 'iPhone 15 Pro (19.5:9)')" class="py-1 px-1.5 rounded bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-mono text-zinc-300 transition text-center" title="iPhone 15 Pro 19.5:9 Full Ratio">iPhone 15 Pro</button>
                             </div>
                         </div>
                     </div>
